@@ -2,6 +2,7 @@ import { Ref, ref } from "vue";
 import EventEmitter from "eventemitter3";
 
 export const Volume: Ref<number> = ref(0.5)
+export const SelectedID: Ref<string> = ref("")
 export const SelectedIndex: Ref<number> = ref(0)
 
 class EventsClass extends EventEmitter {}

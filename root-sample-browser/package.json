@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "clipboardy": "^4.0.0",
     "eventemitter3": "^5.0.1",
     "vue": "^3.4.37"
   },

@@ -8,6 +8,7 @@ export interface Item {
     size: number;
     type: string;
     direct_link?: string;
+    audio_elem?: HTMLAudioElement;
 }
 
 export interface Folder {

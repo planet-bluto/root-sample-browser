@@ -3,7 +3,8 @@ import { coolFetch } from './fetch'
 import { Folder, Item } from './types'
 import Sample from "./components/Sample.vue"
 import { Ref, ref, computed } from 'vue';
-import { Events, SelectedIndex, Volume } from './persist';
+import { Events, SelectedID, SelectedIndex, Volume } from './persist';
+import clipboard from 'clipboardy';
 
 let items: Ref<Item[]> = ref([])
 
@@ -58,6 +59,21 @@ async function surfFolder(user_id: string, folder_id: string) {
           await fetch(direct_link)
 
           item["direct_link"] = direct_link
+          item["audio_elem"] = document.createElement("audio")
+          item["audio_elem"].preload = "auto"
+          item["audio_elem"].volume = 0
+          item["audio_elem"].src = direct_link
+
+          if (item["audio_elem"].readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+            await new Promise((res, rej) => {
+              if (item["audio_elem"] != null) {
+                item["audio_elem"].oncanplay = (_e: Event) => {
+                    res(null)
+                }
+              }
+            })
+          }
+
           items.value.push(item)
         } else if (item.type == "/") {
           await surfFolder(user_id, item.id)
@@ -69,6 +85,12 @@ async function surfFolder(user_id: string, folder_id: string) {
 function volumeUpdate(e: Event) {
   if (e.target instanceof HTMLInputElement) {
     Volume.value = Number(e.target.value)
+
+    items.value.forEach((this_item: Item) => {
+      if (this_item.audio_elem)
+      this_item.audio_elem.volume = Volume.value
+    })
+
     Events.emit("volumeUpdate")
   }
 }
@@ -77,12 +99,15 @@ const searchQuery = ref("")
 function searchUpdate(e) {
   if (e.target instanceof HTMLInputElement) {
     searchQuery.value = e.target.value
-    initLoad(true)
+    // initLoad(true)
   }
 }
 
 Events.on("key_ArrowDown", (e: KeyboardEvent) => {
   e.preventDefault()
+
+  let foundIndex = actualItems.value.findIndex(item => (item.id == SelectedID.value))
+  SelectedIndex.value = (foundIndex == -1 ? 0 : foundIndex)
 
   if (SelectedIndex.value+1 != actualItems.value.length) {
     SelectedIndex.value += 1
@@ -90,11 +115,18 @@ Events.on("key_ArrowDown", (e: KeyboardEvent) => {
     SelectedIndex.value = 0
   }
 
-  Events.emit("selectSample", SelectedIndex.value)
+  let selectedItem: Item = actualItems.value[SelectedIndex.value]
+  SelectedID.value = selectedItem.id
+  playSample(selectedItem, true)
+
+  // Events.emit("selectSample", SelectedIndex.value)
 })
 
 Events.on("key_ArrowUp", (e: KeyboardEvent) => {
   e.preventDefault()
+
+  let foundIndex = actualItems.value.findIndex(item => (item.id == SelectedID.value))
+  SelectedIndex.value = (foundIndex == -1 ? 0 : foundIndex)
 
   if (SelectedIndex.value-1 != -1) {
     SelectedIndex.value -= 1
@@ -102,11 +134,27 @@ Events.on("key_ArrowUp", (e: KeyboardEvent) => {
     SelectedIndex.value = (actualItems.value.length-1)
   }
 
-  Events.emit("selectSample", SelectedIndex.value)
+  let selectedItem: Item = actualItems.value[SelectedIndex.value]
+  SelectedID.value = selectedItem.id
+  playSample(selectedItem, true)
+
+  // Events.emit("selectSample", SelectedIndex.value)
 })
 
 Events.on("key_Enter", () => {
-  Events.emit("selectSample", SelectedIndex.value)
+  let selectedItem: Item = actualItems.value[SelectedIndex.value]
+  playSample(selectedItem, true)
+
+  // Events.emit("selectSample", SelectedIndex.value)
+})
+
+Events.on("key_ctrl_KeyC", async (e: KeyboardEvent) => {
+  let selectedItem: Item = actualItems.value[SelectedIndex.value]
+  if (selectedItem.direct_link != null) {
+    e.preventDefault();
+    print(selectedItem.direct_link)
+    await clipboard.write(`!p,d3!${selectedItem.direct_link}`)
+  }
 })
 
 let keySamples: Object = {}
@@ -145,6 +193,34 @@ const actualItems = computed(() => {
     }
   })
 })
+
+function playSample(item: Item, isArrowKeys: boolean = false) {
+  SelectedID.value = item.id
+
+  let foundIndex = actualItems.value.findIndex(item => (item.id == SelectedID.value))
+  SelectedIndex.value = foundIndex
+
+  if (item.audio_elem instanceof HTMLAudioElement) {
+    item.audio_elem.currentTime = 0
+    item.audio_elem.volume = Volume.value
+
+    items.value.forEach((this_item: Item) => { this_item.audio_elem?.pause() })
+
+    if (isArrowKeys == true) {
+        let sampleElem = document.getElementById(`sample-${item.id}`)
+        if (sampleElem) {
+            sampleElem.scrollIntoView({behavior: "instant", inline: 'center', block: 'center'})
+        }
+    }
+
+    try {
+      item.audio_elem.play()
+    } catch(err) {
+      print("FUCK", err)
+    }
+  }
+}
+
 </script>
 
 <template>
@@ -162,7 +238,7 @@ const actualItems = computed(() => {
     </div>
   </div>
   <div id="sample-container">
-    <Sample v-for="(item, index) in actualItems" :name="item.name" :src="item.direct_link" :ind="index"></Sample>
+    <Sample v-for="(item) in actualItems" :item="item" @click="playSample(item)"></Sample>
   </div>
 </template>
 
