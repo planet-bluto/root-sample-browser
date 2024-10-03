@@ -1,0 +1,32 @@
+
+:root {
+  --theme-back-0: #0d0d0d;
+  --theme-back-1: #151515;
+  --theme-back-2: #252525;
+  --theme-back-3: #353535;
+  --theme-back-4: #454545;
+
+  --theme-accent-0: #00177d;
+  --theme-accent-1: #024aca;
+  --theme-accent-2: #0a89ff;
+  --theme-accent-3: #5ba8ff;
+
+  --theme-text-0: #acacac;
+  --theme-text-1: #FFF;
+}
+
+body {
+  width: calc(100vw - (var(--gap) * 2));
+  height: calc(100vh - (var(--gap) * 2));
+  background: var(--theme-back-2);
+  color: var(--theme-text-1);
+  font-family: 'Montserrat';
+  margin: 0px;
+  padding: var(--gap);
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+p {
+  margin: 0px;
+}
